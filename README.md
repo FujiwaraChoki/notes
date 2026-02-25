@@ -17,7 +17,7 @@ A native macOS notes app built with Swift and AppKit. Markdown editor with synta
 
 ## Requirements
 
-- macOS 14+
+- macOS 14+ (Liquid Glass only supported in 26.0+)
 - Swift 5 / Swift Package Manager (tools version 6.2)
 
 ## Build & Run
