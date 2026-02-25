@@ -1,0 +1,92 @@
+name: Build DMG
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build release binary
+        run: swift build -c release
+
+      - name: Create app bundle
+        run: |
+          APP="Notes.app"
+          mkdir -p "$APP/Contents/MacOS"
+          mkdir -p "$APP/Contents/Resources"
+
+          cp .build/release/Notes "$APP/Contents/MacOS/Notes"
+          chmod +x "$APP/Contents/MacOS/Notes"
+
+          cat > "$APP/Contents/Info.plist" << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleName</key>
+            <string>Notes</string>
+            <key>CFBundleDisplayName</key>
+            <string>Notes</string>
+            <key>CFBundleIdentifier</key>
+            <string>com.fujiwarachoki.notes</string>
+            <key>CFBundleVersion</key>
+            <string>1.0.0</string>
+            <key>CFBundleShortVersionString</key>
+            <string>1.0.0</string>
+            <key>CFBundleExecutable</key>
+            <string>Notes</string>
+            <key>CFBundlePackageType</key>
+            <string>APPL</string>
+            <key>LSMinimumSystemVersion</key>
+            <string>14.0</string>
+            <key>NSHighResolutionCapable</key>
+            <true/>
+            <key>CFBundleDocumentTypes</key>
+            <array>
+              <dict>
+                <key>CFBundleTypeExtensions</key>
+                <array>
+                  <string>md</string>
+                  <string>markdown</string>
+                </array>
+                <key>CFBundleTypeName</key>
+                <string>Markdown Document</string>
+                <key>CFBundleTypeRole</key>
+                <string>Editor</string>
+              </dict>
+            </array>
+          </dict>
+          </plist>
+          PLIST
+
+      - name: Create DMG
+        run: |
+          DMG_NAME="Notes.dmg"
+          STAGING="dmg-staging"
+
+          mkdir -p "$STAGING"
+          cp -R Notes.app "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+
+          hdiutil create -volname "Notes" \
+            -srcfolder "$STAGING" \
+            -ov -format UDZO \
+            "$DMG_NAME"
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Notes.dmg
+          path: Notes.dmg
+
+      - name: Upload to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Notes.dmg
